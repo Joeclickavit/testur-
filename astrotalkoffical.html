@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroTalk</title>
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Joeclickavit/AstroWithUpdates/refs/heads/main/Astro_Render.webp">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #060b18;
+    --bg2:       #0a1228;
+    --bg3:       #0d1835;
+    --bg4:       #111f45;
+    --border:    rgba(56,139,253,0.18);
+    --border-hi: rgba(56,139,253,0.55);
+    --blue:      #388bfd;
+    --blue-dim:  #1c5fca;
+    --blue-glow: rgba(56,139,253,0.25);
+    --blue-bright:#6eb3ff;
+    --accent:    #00d4ff;
+    --text:      #c9d6ef;
+    --text-dim:  #5a6e94;
+    --text-bright:#e8edf8;
+    --green:     #3ddc97;
+    --amber:     #f4a535;
+    --red:       #f45866;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; overflow: hidden; }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 42% 68%, rgba(255,255,255,0.2) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 67% 14%, rgba(255,255,255,0.25) 0%, transparent 100%),
+      radial-gradient(1px 1px at 81% 54%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1px 1px at 92% 79%, rgba(255,255,255,0.22) 0%, transparent 100%),
+      radial-gradient(1px 1px at 56% 91%, rgba(255,255,255,0.18) 0%, transparent 100%),
+      radial-gradient(1px 1px at 26% 87%, rgba(255,255,255,0.15) 0%, transparent 100%),
+      radial-gradient(1px 1px at 6%  61%, rgba(255,255,255,0.18) 0%, transparent 100%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .screen { display: none; height: 100vh; flex-direction: column; position: relative; z-index: 1; }
+  .screen.active { display: flex; }
+
+  /* TOPBAR */
+  .topbar { height: 56px; background: rgba(10,18,40,0.92); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; backdrop-filter: blur(12px); }
+  .wordmark { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.4rem; letter-spacing: 2px; color: var(--text-bright); display: flex; align-items: center; gap: 8px; }
+  .wordmark-icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--blue), var(--accent)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #fff; box-shadow: 0 0 12px var(--blue-glow); }
+  .wordmark span { color: var(--accent); }
+  .topbar-spacer { flex: 1; }
+  .online-pill { display: flex; align-items: center; gap: 6px; background: rgba(61,220,151,0.08); border: 1px solid rgba(61,220,151,0.2); padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; color: var(--green); }
+  .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulseAnim 2s ease-in-out infinite; }
+  @keyframes pulseAnim { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* BUTTONS */
+  .btn { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.85rem; letter-spacing: 0.5px; padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, var(--blue), #1a6fe8); color: #fff; box-shadow: 0 0 16px rgba(56,139,253,0.3); }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 0 24px rgba(56,139,253,0.5); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-hi); color: var(--blue-bright); }
+  .btn-ghost:hover { background: var(--blue-glow); }
+  .btn-subtle { background: var(--bg3); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Sans', sans-serif; font-size: 0.78rem; padding: 6px 12px; }
+  .btn-subtle:hover { border-color: var(--border-hi); color: var(--text); }
+
+  /* INPUTS */
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 0.68rem; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
+  input[type="text"], select, textarea { background: var(--bg3); border: 1px solid var(--border); color: var(--text-bright); padding: 9px 12px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; border-radius: 6px; outline: none; width: 100%; transition: border-color 0.2s, box-shadow 0.2s; }
+  input[type="text"]:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(56,139,253,0.12); }
+  select option { background: var(--bg3); color: var(--text-bright); }
+
+  /* LOBBY */
+  .lobby-body { display: flex; flex: 1; overflow: hidden; }
+  .lobby-sidebar { width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; background: rgba(10,18,40,0.5); }
+  .sidebar-section { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .section-label { font-family: 'Rajdhani', sans-serif; font-size: 0.72rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--blue); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-label::before { content: ''; width: 3px; height: 12px; background: var(--blue); border-radius: 2px; box-shadow: 0 0 6px var(--blue); }
+  .radio-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .radio-chip { display: flex; align-items: center; gap: 5px; padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px; cursor: pointer; font-size: 0.75rem; color: var(--text-dim); transition: all 0.15s; user-select: none; }
+  .radio-chip:has(input:checked) { border-color: var(--blue); background: rgba(56,139,253,0.1); color: var(--blue-bright); box-shadow: 0 0 8px rgba(56,139,253,0.15); }
+  .radio-chip input { display: none; }
+  .color-swatch { width: 10px; height: 10px; border-radius: 50%; }
+
+  .lobby-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .lobby-main-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: rgba(10,18,40,0.3); }
+  .rooms-title { font-family: 'Rajdhani', sans-serif; font-size: 1rem; font-weight: 600; letter-spacing: 1px; color: var(--text-bright); }
+  .room-grid { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+
+  .room-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.2s, background 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+  .room-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--blue); opacity: 0; transition: opacity 0.2s; border-radius: 0 2px 2px 0; }
+  .room-card:hover { border-color: var(--border-hi); background: var(--bg3); box-shadow: 0 0 20px rgba(56,139,253,0.08); }
+  .room-card:hover::before { opacity: 1; }
+  .room-card.full { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .room-card-info { flex: 1; min-width: 0; }
+  .room-card-name { font-weight: 500; font-size: 0.9rem; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+  .room-card-sub { font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+
+  .badge { font-family: 'Rajdhani', sans-serif; font-size: 0.62rem; font-weight: 600; letter-spacing: 1px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
+  .badge-public  { background: rgba(61,220,151,0.1); color: var(--green); border: 1px solid rgba(61,220,151,0.25); }
+
+  .slot-row { display: flex; gap: 4px; align-items: center; }
+  .slot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(56,139,253,0.2); background: transparent; }
+  .slot.on { background: var(--blue); border-color: var(--blue); box-shadow: 0 0 5px rgba(56,139,253,0.5); }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-dim); font-size: 0.8rem; }
+  .empty-state-icon { font-size: 2rem; opacity: 0.3; }
+
+  /* CHAT */
+  .chat-topbar { height: 52px; background: rgba(10,18,40,0.95); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 14px; flex-shrink: 0; backdrop-filter: blur(12px); }
+  .room-name-display { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 1rem; letter-spacing: 0.5px; color: var(--text-bright); }
+  .divider-v { width: 1px; height: 20px; background: var(--border); }
+
+  .chat-panels { flex: 1; display: flex; overflow: hidden; }
+  .chat-panels.horizontal { flex-direction: column; }
+  .chat-panels.vertical   { flex-direction: row; }
+
+  .user-panel { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; border: 1px solid var(--border); position: relative; background: var(--bg2); transition: border-color 0.3s; }
+  .chat-panels.horizontal .user-panel { border-left: none; border-right: none; }
+  .chat-panels.horizontal .user-panel + .user-panel { border-top: none; }
+  .chat-panels.vertical   .user-panel { border-top: none; border-bottom: none; }
+  .chat-panels.vertical   .user-panel + .user-panel { border-left: none; }
+  .user-panel.typing-active { border-color: var(--border-hi); }
+
+  .panel-head { padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; background: rgba(10,18,40,0.6); }
+  .panel-head-left { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 38px; height: 38px; border-radius: 8px; object-fit: cover; object-position: 50% 20%; flex-shrink: 0; display: block; border: 2px solid transparent; }
+  .panel-name-block { display: flex; flex-direction: column; gap: 2px; }
+  .panel-name-row { display: flex; align-items: center; gap: 6px; }
+  .panel-uname { font-weight: 500; font-size: 0.88rem; color: var(--text-bright); }
+  .you-tag { font-size: 0.6rem; padding: 1px 6px; background: rgba(56,139,253,0.15); color: var(--blue-bright); border: 1px solid rgba(56,139,253,0.3); border-radius: 3px; font-family: 'Rajdhani', sans-serif; font-weight: 600; letter-spacing: 0.5px; }
+  .panel-lv { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.68rem; letter-spacing: 0.5px; opacity: 0.85; }
+  .panel-loc { font-size: 0.65rem; color: var(--text-dim); }
+
+  .panel-body { flex: 1; padding: 10px 14px; overflow-y: auto; font-size: 0.85rem; line-height: 1.55; word-break: break-word; min-height: 0; }
+  .typing-cursor::after { content: '|'; animation: blink 0.8s step-end infinite; opacity: 0.6; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .own-input-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+  .own-textarea { flex: 1; width: 100%; background: transparent; border: none; box-shadow: none !important; padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; line-height: 1.55; resize: none; border-radius: 0; }
+  .own-input-wrap .char-counter { position: absolute; bottom: 6px; right: 12px; font-size: 0.65rem; color: var(--text-dim); background: rgba(6,11,24,0.55); padding: 1px 6px; border-radius: 4px; pointer-events: none; }
+
+  .empty-panel { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px; color: var(--text-dim); font-size: 0.75rem; }
+  .empty-panel-icon { width: 32px; height: 32px; border: 1px dashed rgba(56,139,253,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: rgba(56,139,253,0.3); font-size: 1rem; margin-bottom: 2px; }
+
+  .chat-bottombar { height: 38px; background: rgba(10,18,40,0.9); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 10px; flex-shrink: 0; font-size: 0.7rem; color: var(--text-dim); }
+  .invite-wrap { flex: 1; display: flex; align-items: center; gap: 6px; max-width: 400px; }
+  .invite-wrap input { background: transparent; border: none; padding: 0; color: var(--text-dim); font-size: 0.68rem; height: auto; border-radius: 0; border-bottom: 1px solid var(--border); box-shadow: none !important; flex: 1; }
+
+  /* TOAST */
+  #toasts { position: fixed; top: 16px; right: 16px; z-index: 99999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+  .toast { background: var(--bg3); border: 1px solid var(--border-hi); border-radius: 8px; padding: 10px 16px; font-size: 0.78rem; color: var(--text-bright); box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: toastIn 0.2s ease, toastFade 0.3s ease 2.7s forwards; }
+  @keyframes toastIn   { from { opacity:0; transform: translateX(16px); } to { opacity:1; transform: none; } }
+  @keyframes toastFade { to   { opacity:0; transform: translateX(16px); } }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--blue-dim); }
+
+  /* LOADING */
+  #loadingOverlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; z-index: 99998; transition: opacity 0.4s; }
+  #loadingOverlay.hidden { opacity: 0; pointer-events: none; }
+  .spinner { width: 36px; height: 36px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.6rem;letter-spacing:3px;color:#e8edf8;display:flex;align-items:center;gap:10px;">
+    <img src="https://raw.githubusercontent.com/Joeclickavit/AstroWithUpdates/refs/heads/main/Astro_Render.webp" style="width:36px;height:36px;object-fit:contain;">
+    ASTRO<span style="color:#00d4ff;">TALK</span>
+  </div>
+  <div class="spinner"></div>
+  <span style="font-size:0.75rem;color:#5a6e94;">Connecting…</span>
+</div>
+
+<!-- LOBBY -->
+<div class="screen" id="lobby">
+  <div class="topbar">
+    <div class="wordmark"><img src="https://raw.githubusercontent.com/Joeclickavit/AstroWithUpdates/refs/heads/main/Astro_Render.webp" style="width:28px;height:28px;object-fit:contain;border-radius:7px;">ASTRO<span>TALK</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="online-pill"><div class="pulse-dot"></div><span id="onlineCount">— online</span></div>
+  </div>
+  <div class="lobby-body">
+    <div class="lobby-sidebar">
+      <div class="sidebar-section" id="levelCard" style="display:flex;align-items:center;gap:14px;padding:14px 20px;">
+        <img id="lobbyPfp" style="width:52px;height:52px;border-radius:9px;object-fit:cover;object-position:50% 20%;border:2px solid var(--border-hi);flex-shrink:0;" src="">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Rajdhani',sans-serif;font-weight:800;font-size:1rem;color:var(--text-bright);letter-spacing:0.5px;" id="lobbyLvLabel">Level 0</div>
+          <div style="height:10px;background:var(--bg4);border-radius:6px;margin-top:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+            <div id="lobbyXpBar" style="height:100%;background:var(--blue);border-radius:6px;width:0%;transition:width 0.3s ease;box-shadow:0 0 8px rgba(56,139,253,0.5);"></div>
+          </div>
+          <div style="font-size:0.68rem;color:var(--text-dim);margin-top:4px;display:flex;justify-content:space-between;" id="lobbyXpLabel">0 / 100 XP</div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="section-label">Your Profile</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="field"><label>Screen Name</label><input type="text" id="userName" placeholder="Enter your name" maxlength="20" autocomplete="off"></div>
+          <div class="field">
+            <label>Text Color</label>
+            <div class="radio-row">
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#388bfd" checked><span class="color-swatch" style="background:#388bfd"></span>Blue</label>
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#3ddc97"><span class="color-swatch" style="background:#3ddc97"></span>Green</label>
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#f4a535"><span class="color-swatch" style="background:#f4a535"></span>Amber</label>
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#f45866"><span class="color-swatch" style="background:#f45866"></span>Red</label>
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#c77dff"><span class="color-swatch" style="background:#c77dff"></span>Violet</label>
+              <label class="radio-chip"><input type="radio" name="ucolor" value="#00d4ff"><span class="color-swatch" style="background:#00d4ff"></span>Cyan</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-section" style="flex:1;">
+        <div class="section-label">Create Room</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="field"><label>Room Name</label><input type="text" id="newRoomName" placeholder="e.g. General Chat" maxlength="32" autocomplete="off"></div>
+          <button class="btn btn-primary" onclick="createRoom()" style="width:100%;justify-content:center;margin-top:4px;">✦ Create Room</button>
+        </div>
+      </div>
+    </div>
+    <div class="lobby-main">
+      <div class="lobby-main-header">
+        <div class="rooms-title">Active Rooms</div>
+        <button class="btn btn-subtle" onclick="loadRooms()">↺ &nbsp;Refresh</button>
+      </div>
+      <div class="room-grid" id="roomGrid"><div class="empty-state"><div class="spinner" style="width:24px;height:24px;border-width:2px;"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="screen" id="chatroom">
+  <div class="chat-topbar">
+    <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.78rem;" onclick="leaveRoom()">← Back</button>
+    <div class="divider-v"></div>
+    <div class="room-name-display" id="chatRoomTitle">—</div>
+    <span id="chatBadge" class="badge badge-public">PUBLIC</span>
+    <div class="topbar-spacer"></div>
+    <button class="btn btn-subtle" id="layoutBtn" onclick="toggleLayout()">⇄ Vertical</button>
+  </div>
+  <div class="chat-panels horizontal" id="chatPanels"></div>
+  <div class="chat-bottombar">
+    <span>ID: <strong id="footerRoomId" style="color:var(--text)">—</strong></span>
+    <div class="divider-v"></div>
+    <span style="color:var(--text-dim);">astrotalk</span>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, off, remove, onDisconnect, update }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── Config ──
+const app = initializeApp({
+  apiKey: "AIzaSyDA3zsiR1kCn1Gh7WVu6fWOJqiql6lCB_k",
+  authDomain: "securlypasss.firebaseapp.com",
+  projectId: "securlypasss",
+  storageBucket: "securlypasss.firebasestorage.app",
+  messagingSenderId: "86343982901",
+  appId: "1:86343982901:web:8230c15e0bf330bc9bb67c",
+  databaseURL: "https://securlypasss-default-rtdb.firebaseio.com"
+});
+const db = getDatabase(app);
+
+// ── XP / Level system (mirrors Astro's Dreamland localStorage) ──
+const PFP_MILESTONES = {
+  0:    "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Vintage_Astro.webp",
+  1:    "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Astro.webp",
+  25:   "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/North_Star.webp",
+  100:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Bedtime_Bear.webp",
+  250:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Star-Time_Astro.webp",
+  500:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Starry_Night.webp",
+  1000: "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Scarlet_Night.webp"
+};
+function xpNeeded(lvl){ return Math.floor(100 * Math.pow(1.001, lvl)); }
+
+// Read level data — injected global is the most reliable source
+function _ls(key){
+  const MAP = { 'astro_level':'level', 'astro_xp':'xp', 'astro_chosen_pfp':'chosen_pfp' };
+  const field = MAP[key];
+  // 1. Injected by opener at open-time (or updated via postMessage)
+  if(field && window.__ASTRO_DATA__ && window.__ASTRO_DATA__[field] != null)
+    return String(window.__ASTRO_DATA__[field]);
+  // 2. Same-window localStorage (fallback if opened directly)
+  try { const v = localStorage.getItem(key); if(v !== null) return v; } catch(e){}
+  // 3. Opener localStorage (last resort)
+  try { if(window.opener){ const v = window.opener.localStorage.getItem(key); if(v !== null) return v; }} catch(e){}
+  return null;
+}
+
+function getPfpForLevel(lvl){
+  // Only use chosen pfp for the LOCAL user — for remote users (lvl comes from Firebase) skip this
+  return _milestoneForLevel(lvl);
+}
+function getMyPfp(lvl){
+  const chosen = _ls('astro_chosen_pfp');
+  if(chosen) return chosen;
+  return _milestoneForLevel(lvl);
+}
+function _milestoneForLevel(lvl){
+  let pfp = PFP_MILESTONES[0];
+  Object.keys(PFP_MILESTONES).forEach(m => { if(lvl >= parseInt(m)) pfp = PFP_MILESTONES[m]; });
+  return pfp;
+}
+function readLocalLevel(){
+  const lvl = parseInt(_ls('astro_level')) || 0;
+  const xp  = parseInt(_ls('astro_xp'))   || 0;
+  return { lvl, xp };
+}
+function renderLobbyLevel(){
+  const { lvl, xp } = readLocalLevel();
+  const needed = xpNeeded(lvl);
+  const pfp    = getMyPfp(lvl);
+  document.getElementById('lobbyPfp').src              = pfp;
+  document.getElementById('lobbyLvLabel').textContent  = `Level ${lvl}`;
+  document.getElementById('lobbyXpBar').style.width    = `${Math.min(100,(xp/needed)*100)}%`;
+  document.getElementById('lobbyXpLabel').textContent  = `${xp} / ${needed} XP`;
+}
+
+// Preload all milestone pfp images + chosen pfp into browser cache
+function preloadPfps(){
+  const chosen = _ls('astro_chosen_pfp');
+  const urls = [...Object.values(PFP_MILESTONES), ...(chosen ? [chosen] : [])];
+  urls.forEach(url => { const img = new Image(); img.src = url; });
+}
+
+// ── State ──
+const MAX_USERS = 5;
+const MAX_CHARS = 300;
+let myId       = Math.random().toString(36).slice(2,10);
+let myRoomId   = null;
+let myName     = '';
+let myLoc      = '';
+let myColor    = '#388bfd';
+let myLevel    = 0;
+let myPfp      = PFP_MILESTONES[0];
+let layoutMode = 'horizontal';
+let roomUnsub  = null;
+
+// ── Helpers ──
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function uid(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
+function hexRgba(hex,a){ const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; }
+function toast(msg){ const c=document.getElementById('toasts'),el=document.createElement('div'); el.className='toast'; el.textContent=msg; c.appendChild(el); setTimeout(()=>el.remove(),3100); }
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function hideLoading(){ const ol=document.getElementById('loadingOverlay'); ol.classList.add('hidden'); setTimeout(()=>ol.remove(),500); }
+
+// ══ LOAD ROOMS ══
+async function loadRooms(){
+  const grid = document.getElementById('roomGrid');
+  grid.innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;border-width:2px;"></div></div>';
+
+  const snap = await get(ref(db,'rooms'));
+  const data = snap.val() || {};
+  const entries = Object.entries(data);
+
+  const total = entries.reduce((a,[,r])=>a+Object.keys(r.users||{}).length,0);
+  document.getElementById('onlineCount').textContent = (total)+' online';
+
+  if(!entries.length){
+    grid.innerHTML='<div class="empty-state"><div class="empty-state-icon">🛸</div><span>No active rooms — create one!</span></div>';
+    return;
+  }
+
+  grid.innerHTML = entries.map(([id,r])=>{
+    const users = Object.values(r.users||{});
+    const full  = users.length >= MAX_USERS;
+    const slots = Array(MAX_USERS).fill(0).map((_,i)=>`<div class="slot${i<users.length?' on':''}"></div>`).join('');
+    return `<div class="room-card${full?' full':''}" ${full?'':` onclick="window._joinRoom('${id}')"`}>
+      <div class="room-card-info">
+        <div class="room-card-name">${esc(r.name)}</div>
+        <div class="room-card-sub">
+          <span class="badge badge-${r.type||'public'}">${(r.type||'public').toUpperCase()}</span>
+          <span>${users.length}/${MAX_USERS} users${full?' · Full':''}</span>
+        </div>
+      </div>
+      <div class="slot-row">${slots}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══ CREATE ROOM ══
+async function createRoom(){
+  const uname = document.getElementById('userName').value.trim();
+  const rname = document.getElementById('newRoomName').value.trim();
+  if(!uname){ toast('Enter your screen name first.'); return; }
+  if(!rname){ toast('Enter a room name.'); return; }
+  myName  = uname;
+  myColor = document.querySelector('input[name="ucolor"]:checked').value;
+  const { lvl } = readLocalLevel();
+  myLevel = lvl;
+  myPfp   = getMyPfp(lvl);
+  const roomId = uid();
+  await set(ref(db,`rooms/${roomId}`),{ name:rname, type:'public', createdAt:Date.now(), users:{} });
+  enterRoom(roomId);
+}
+
+// ══ JOIN ROOM ══
+async function joinRoom(roomId){
+  const uname = document.getElementById('userName').value.trim();
+  if(!uname){ toast('Enter your screen name first.'); return; }
+  myName  = uname;
+  myColor = document.querySelector('input[name="ucolor"]:checked').value;
+  const { lvl } = readLocalLevel();
+  myLevel = lvl;
+  myPfp   = getMyPfp(lvl);
+
+  const snap = await get(ref(db,`rooms/${roomId}`));
+  if(!snap.exists()){ toast('Room no longer exists.'); loadRooms(); return; }
+  enterRoom(roomId);
+}
+
+// ══ ENTER ROOM ══
+async function enterRoom(roomId){
+  const snap = await get(ref(db,`rooms/${roomId}`));
+  if(!snap.exists()){ toast('Room not found.'); return; }
+  const room = snap.val();
+  if(Object.keys(room.users||{}).length >= MAX_USERS){ toast('Room is full.'); return; }
+
+  myRoomId = roomId;
+  const userRef = ref(db,`rooms/${roomId}/users/${myId}`);
+  await set(userRef,{ id:myId, name:myName, loc:myLoc, color:myColor, pfp:myPfp, level:myLevel, typing:'', joinedAt:Date.now() });
+  onDisconnect(userRef).remove();
+
+  // Build static parts of chat UI
+  document.getElementById('chatRoomTitle').textContent = room.name;
+  const badge = document.getElementById('chatBadge');
+  badge.textContent = (room.type||'public').toUpperCase();
+  badge.className = `badge badge-${room.type||'public'}`;
+  document.getElementById('footerRoomId').textContent = roomId;
+  document.getElementById('layoutBtn').textContent = '⇄ Vertical';
+
+  showScreen('chatroom');
+  listenRoom(roomId);
+  toast(`Joined "${room.name}"`);
+}
+
+// ══ LEAVE ROOM ══
+async function leaveRoom(){
+  if(roomUnsub){ roomUnsub(); roomUnsub=null; }
+  if(myRoomId && myId){
+    const userRef = ref(db,`rooms/${myRoomId}/users/${myId}`);
+    await remove(userRef);
+    // Delete room if empty
+    const snap = await get(ref(db,`rooms/${myRoomId}/users`));
+    if(!snap.exists()) await remove(ref(db,`rooms/${myRoomId}`));
+  }
+  myRoomId=null; layoutMode='horizontal';
+  document.getElementById('chatPanels').innerHTML='';
+  loadRooms(); showScreen('lobby');
+}
+
+// ══ REAL-TIME LISTENER ══
+function listenRoom(roomId){
+  const rRef = ref(db,`rooms/${roomId}`);
+  const unsub = onValue(rRef, snap=>{
+    if(!snap.exists()){
+      toast('Room was closed.');
+      myRoomId=null;
+      if(roomUnsub){ roomUnsub(); roomUnsub=null; }
+      document.getElementById('chatPanels').innerHTML='';
+      showScreen('lobby');
+      loadRooms();
+      return;
+    }
+    renderPanels(snap.val(), roomId);
+  });
+  roomUnsub = ()=>off(rRef);
+}
+
+// ══ RENDER PANELS ══
+function renderPanels(room, roomId){
+  const users = Object.values(room.users||{}).sort((a,b)=>a.joinedAt-b.joinedAt);
+  const c = document.getElementById('chatPanels');
+
+  // Check if we need a full rebuild (user list changed)
+  const existing = [...c.querySelectorAll('.user-panel[data-uid]')].map(e=>e.dataset.uid);
+  const current  = users.map(u=>u.id);
+  const needRebuild = existing.length !== current.length || existing.some((id,i)=>id!==current[i]);
+
+  if(needRebuild){
+    const prevInp = document.getElementById('myInput');
+    const savedValue = prevInp ? prevInp.value : '';
+    const savedPos   = prevInp ? prevInp.selectionStart : null;
+
+    c.innerHTML='';
+    c.className=`chat-panels ${layoutMode}`;
+    const slots=[...users];
+    while(slots.length<MAX_USERS) slots.push(null);
+
+    slots.forEach(user=>{
+      const panel=document.createElement('div');
+      panel.className='user-panel';
+      if(!user){
+        panel.innerHTML=`<div class="empty-panel"><div class="empty-panel-icon">+</div><span>Empty slot</span></div>`;
+      } else {
+        panel.dataset.uid=user.id;
+        const isMe=user.id===myId;
+        const userPfp = user.pfp || getPfpForLevel(user.level||0);
+        const userLvl = user.level || 0;
+        panel.innerHTML=`
+          <div class="panel-head">
+            <div class="panel-head-left">
+              <img class="avatar" src="${esc(userPfp)}" style="border-color:${user.color||'#388bfd'};box-shadow:0 0 8px ${hexRgba(user.color||'#388bfd',0.35)}">
+              <div class="panel-name-block">
+                <div class="panel-name-row">
+                  <span class="panel-uname">${esc(user.name)}</span>
+                  ${isMe?'<span class="you-tag">YOU</span>':''}
+                </div>
+                <span class="panel-lv" style="color:${user.color||'#388bfd'}">Lv. ${userLvl}</span>
+              </div>
+            </div>
+            <span class="panel-loc">${esc(user.loc||'—')}</span>
+          </div>
+          ${isMe?`<div class="own-input-wrap">
+            <textarea id="myInput" class="own-textarea" placeholder="Type your message…" maxlength="${MAX_CHARS}" style="color:${user.color||'#388bfd'}"></textarea>
+            <span class="char-counter" id="charCt">0</span>
+          </div>`:`<div class="panel-body" id="pb_${user.id}" style="color:${user.color||'#388bfd'}"></div>`}`;
+        if(isMe){ panel.style.borderColor=hexRgba(user.color||'#388bfd',0.35); panel.style.boxShadow=`inset 0 0 40px ${hexRgba(user.color||'#388bfd',0.04)}`; }
+      }
+      c.appendChild(panel);
+    });
+
+    // Wire input
+    const inp=document.getElementById('myInput');
+    if(inp){
+      if(savedValue){
+        inp.value=savedValue;
+        document.getElementById('charCt').textContent=savedValue.length;
+      }
+      inp.addEventListener('input',e=>{
+        const val=e.target.value;
+        document.getElementById('charCt').textContent=val.length;
+        if(myRoomId) update(ref(db,`rooms/${myRoomId}/users/${myId}`),{typing:val});
+      });
+      inp.addEventListener('keydown',e=>{
+        if(e.key==='Enter'&&!e.shiftKey){
+          e.preventDefault();
+          inp.value='';
+          document.getElementById('charCt').textContent='0';
+          if(myRoomId) update(ref(db,`rooms/${myRoomId}/users/${myId}`),{typing:''});
+        }
+      });
+      setTimeout(()=>{
+        inp.focus();
+        if(savedPos!==null) inp.setSelectionRange(savedPos,savedPos);
+      },50);
+    }
+  } else {
+    // Just update typing text for others
+    users.forEach(user=>{
+      if(user.id===myId) return; // don't override our own textarea
+      const body=document.getElementById(`pb_${user.id}`);
+      if(!body) return;
+      const text=user.typing||'';
+      body.textContent=text;
+      body.classList.toggle('typing-cursor',text.length>0);
+      const panel=body.closest('.user-panel');
+      if(panel) panel.classList.toggle('typing-active',text.length>0);
+    });
+  }
+}
+
+// ══ LAYOUT TOGGLE ══
+function toggleLayout(){
+  layoutMode=layoutMode==='horizontal'?'vertical':'horizontal';
+  document.getElementById('layoutBtn').textContent=layoutMode==='horizontal'?'⇄ Vertical':'⇅ Horizontal';
+  document.getElementById('chatPanels').className=`chat-panels ${layoutMode}`;
+}
+
+function copyInvite(){
+  const inp=document.getElementById('inviteInput'); inp.select();
+  try{document.execCommand('copy');}catch(e){}
+  toast('Invite link copied!');
+}
+
+// ══ LIVE LEVEL SYNC ══
+// Astro's Dreamland calls addXP → postMessage → this fires instantly
+window.addEventListener('message', e => {
+  if(e.data?.type !== 'astro_xp_update') return;
+  // Merge into our injected data store so _ls picks it up
+  window.__ASTRO_DATA__ = {
+    level:      e.data.level,
+    xp:         e.data.xp,
+    chosen_pfp: e.data.chosen_pfp
+  };
+  renderLobbyLevel();
+  preloadPfps();
+  const { lvl } = readLocalLevel();
+  const newPfp = getMyPfp(lvl);
+  myLevel = lvl; myPfp = newPfp;
+  if(myRoomId){
+    update(ref(db,`rooms/${myRoomId}/users/${myId}`), { pfp: newPfp, level: lvl });
+  }
+});
+
+// ══ EXPOSE TO HTML ══
+window._joinRoom  = joinRoom;
+window.createRoom = createRoom;
+window.loadRooms  = loadRooms;
+window.leaveRoom  = leaveRoom;
+window.toggleLayout = toggleLayout;
+window.copyInvite   = copyInvite;
+
+// ══ AUTO-JOIN from URL ══
+async function init(){
+  preloadPfps();
+  renderLobbyLevel();
+  await loadRooms();
+  hideLoading();
+  showScreen('lobby');
+  const params=new URLSearchParams(location.search);
+  const roomId=params.get('room');
+  if(roomId) toast('Enter your name, then find or join the room.');
+}
+
+init();
+</script>
+</body>
+</html>
