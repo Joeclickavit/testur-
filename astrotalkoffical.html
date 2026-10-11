@@ -256,7 +256,7 @@
 
 <script type="module">
 import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, off, remove, onDisconnect, update }
+import { getDatabase, ref, set, get, onValue, off, remove, onDisconnect, update, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ── Config ──
@@ -343,8 +343,36 @@ let myLoc      = '';
 let myColor    = '#388bfd';
 let myLevel    = 0;
 let myPfp      = PFP_MILESTONES[0];
-let layoutMode = 'horizontal';
-let roomUnsub  = null;
+let layoutMode     = 'horizontal';
+let roomUnsub      = null;
+let lobbyUnsub     = null;
+let heartbeatTimer = null;
+
+// ── Heartbeat (keeps WebSocket alive, prevents idle disconnects) ──
+function startHeartbeat(){
+  stopHeartbeat();
+  heartbeatTimer = setInterval(()=>{
+    if(myRoomId && myId){
+      update(ref(db,`rooms/${myRoomId}/users/${myId}`),{ lastSeen: Date.now() });
+    }
+  }, 20000); // ping every 20s
+}
+function stopHeartbeat(){
+  if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer=null; }
+}
+
+// ── Reconnect watcher (re-adds user if connection drops and recovers) ──
+onValue(ref(db,'.info/connected'), async snap=>{
+  if(snap.val() !== true || !myRoomId) return;
+  // Re-register onDisconnect and make sure our user record is still there
+  const userRef = ref(db,`rooms/${myRoomId}/users/${myId}`);
+  onDisconnect(userRef).remove();
+  const check = await get(userRef);
+  if(!check.exists()){
+    await set(userRef,{ id:myId, name:myName, loc:myLoc, color:myColor,
+      pfp:myPfp, level:myLevel, typing:'', joinedAt:Date.now(), lastSeen:Date.now() });
+  }
+});
 
 // ── Helpers ──
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -354,39 +382,63 @@ function toast(msg){ const c=document.getElementById('toasts'),el=document.creat
 function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
 function hideLoading(){ const ol=document.getElementById('loadingOverlay'); ol.classList.add('hidden'); setTimeout(()=>ol.remove(),500); }
 
-// ══ LOAD ROOMS ══
-async function loadRooms(){
-  const grid = document.getElementById('roomGrid');
-  grid.innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;border-width:2px;"></div></div>';
+// ══ LOBBY REAL-TIME LISTENER ══
+function listenLobby(){
+  if(lobbyUnsub){ lobbyUnsub(); lobbyUnsub=null; }
+  const rRef = ref(db,'rooms');
+  const unsub = onValue(rRef, async snap => {
+    const data = snap.val() || {};
+    const entries = Object.entries(data);
 
-  const snap = await get(ref(db,'rooms'));
-  const data = snap.val() || {};
-  const entries = Object.entries(data);
+    // Auto-delete rooms that Firebase left with 0 users (e.g. from abrupt disconnects)
+    for(const [id, r] of entries){
+      if(!r.users || Object.keys(r.users).length === 0){
+        await remove(ref(db,`rooms/${id}`));
+      }
+    }
 
-  const total = entries.reduce((a,[,r])=>a+Object.keys(r.users||{}).length,0);
-  document.getElementById('onlineCount').textContent = (total)+' online';
+    // Recalculate after potential deletions
+    const liveEntries = entries.filter(([,r]) => r.users && Object.keys(r.users).length > 0);
+    const roomCount   = liveEntries.length;
+    const totalOnline = liveEntries.reduce((a,[,r])=>a+Object.keys(r.users||{}).length, 0);
 
-  if(!entries.length){
-    grid.innerHTML='<div class="empty-state"><div class="empty-state-icon">🛸</div><span>No active rooms — create one!</span></div>';
-    return;
-  }
+    // Tab title
+    document.title = roomCount > 0
+      ? `(${roomCount} room${roomCount>1?'s':''} · ${totalOnline} online) AstroTalk`
+      : 'AstroTalk';
 
-  grid.innerHTML = entries.map(([id,r])=>{
-    const users = Object.values(r.users||{});
-    const full  = users.length >= MAX_USERS;
-    const slots = Array(MAX_USERS).fill(0).map((_,i)=>`<div class="slot${i<users.length?' on':''}"></div>`).join('');
-    return `<div class="room-card${full?' full':''}" ${full?'':` onclick="window._joinRoom('${id}')"`}>
-      <div class="room-card-info">
-        <div class="room-card-name">${esc(r.name)}</div>
-        <div class="room-card-sub">
-          <span class="badge badge-${r.type||'public'}">${(r.type||'public').toUpperCase()}</span>
-          <span>${users.length}/${MAX_USERS} users${full?' · Full':''}</span>
+    // Online pill
+    document.getElementById('onlineCount').textContent =
+      roomCount > 0 ? `${roomCount} room${roomCount>1?'s':''} · ${totalOnline} online` : '0 online';
+
+    // Room grid
+    const grid = document.getElementById('roomGrid');
+    if(!grid) return; // might be in chat view
+    if(!liveEntries.length){
+      grid.innerHTML='<div class="empty-state"><div class="empty-state-icon">🛸</div><span>No active rooms — create one!</span></div>';
+      return;
+    }
+    grid.innerHTML = liveEntries.map(([id,r])=>{
+      const users = Object.values(r.users||{});
+      const full  = users.length >= MAX_USERS;
+      const slots = Array(MAX_USERS).fill(0).map((_,i)=>`<div class="slot${i<users.length?' on':''}"></div>`).join('');
+      return `<div class="room-card${full?' full':''}" ${full?'':` onclick="window._joinRoom('${id}')"`}>
+        <div class="room-card-info">
+          <div class="room-card-name">${esc(r.name)}</div>
+          <div class="room-card-sub">
+            <span class="badge badge-${r.type||'public'}">${(r.type||'public').toUpperCase()}</span>
+            <span>${users.length}/${MAX_USERS} users${full?' · Full':''}</span>
+          </div>
         </div>
-      </div>
-      <div class="slot-row">${slots}</div>
-    </div>`;
-  }).join('');
+        <div class="slot-row">${slots}</div>
+      </div>`;
+    }).join('');
+  });
+  lobbyUnsub = ()=>off(rRef);
 }
+
+// Keep loadRooms as a no-op alias so existing onclick calls don't break
+function loadRooms(){ listenLobby(); }
 
 // ══ CREATE ROOM ══
 async function createRoom(){
@@ -439,7 +491,12 @@ async function enterRoom(roomId){
   document.getElementById('footerRoomId').textContent = roomId;
   document.getElementById('layoutBtn').textContent = '⇄ Vertical';
 
+  // Stop lobby listener while in a room
+  if(lobbyUnsub){ lobbyUnsub(); lobbyUnsub=null; }
+  document.title = `💬 ${room.name} · AstroTalk`;
+
   showScreen('chatroom');
+  startHeartbeat();
   listenRoom(roomId);
   toast(`Joined "${room.name}"`);
 }
@@ -454,9 +511,12 @@ async function leaveRoom(){
     const snap = await get(ref(db,`rooms/${myRoomId}/users`));
     if(!snap.exists()) await remove(ref(db,`rooms/${myRoomId}`));
   }
+  stopHeartbeat();
   myRoomId=null; layoutMode='horizontal';
   document.getElementById('chatPanels').innerHTML='';
-  loadRooms(); showScreen('lobby');
+  document.title = 'AstroTalk';
+  showScreen('lobby');
+  listenLobby();
 }
 
 // ══ REAL-TIME LISTENER ══
@@ -465,11 +525,13 @@ function listenRoom(roomId){
   const unsub = onValue(rRef, snap=>{
     if(!snap.exists()){
       toast('Room was closed.');
+      stopHeartbeat();
       myRoomId=null;
       if(roomUnsub){ roomUnsub(); roomUnsub=null; }
       document.getElementById('chatPanels').innerHTML='';
+      document.title = 'AstroTalk';
       showScreen('lobby');
-      loadRooms();
+      listenLobby();
       return;
     }
     renderPanels(snap.val(), roomId);
@@ -615,7 +677,7 @@ window.copyInvite   = copyInvite;
 async function init(){
   preloadPfps();
   renderLobbyLevel();
-  await loadRooms();
+  listenLobby();
   hideLoading();
   showScreen('lobby');
   const params=new URLSearchParams(location.search);
