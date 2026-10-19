@@ -273,13 +273,13 @@ const db = getDatabase(app);
 
 // ── XP / Level system (mirrors Astro's Dreamland localStorage) ──
 const PFP_MILESTONES = {
-  0:    "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Vintage_Astro.webp",
-  1:    "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Astro.webp",
-  25:   "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/North_Star.webp",
-  100:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Bedtime_Bear.webp",
-  250:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Star-Time_Astro.webp",
-  500:  "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Starry_Night.webp",
-  1000: "https://fastly.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Scarlet_Night.webp"
+  0:    "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Vintage_Astro.webp",
+  1:    "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Astro.webp",
+  25:   "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/North_Star.webp",
+  100:  "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Bedtime_Bear.webp",
+  250:  "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Star-Time_Astro.webp",
+  500:  "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Starry_Night.webp",
+  1000: "https://testingcf.jsdelivr.net/gh/Joeclickavit/astrosilly@main/Scarlet_Night.webp"
 };
 function xpNeeded(lvl){ return Math.floor(100 * Math.pow(1.001, lvl)); }
 
@@ -452,7 +452,12 @@ async function createRoom(){
   myLevel = lvl;
   myPfp   = getMyPfp(lvl);
   const roomId = uid();
-  await set(ref(db,`rooms/${roomId}`),{ name:rname, type:'public', createdAt:Date.now(), users:{} });
+  const userRef = ref(db,`rooms/${roomId}/users/${myId}`);
+  await set(ref(db,`rooms/${roomId}`),{
+    name:rname, type:'public', createdAt:Date.now(),
+    users:{ [myId]:{ id:myId, name:myName, loc:myLoc, color:myColor, pfp:myPfp, level:myLevel, typing:'', joinedAt:Date.now() } }
+  });
+  onDisconnect(userRef).remove();
   enterRoom(roomId);
 }
 
