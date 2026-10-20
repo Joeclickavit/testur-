@@ -297,13 +297,20 @@ function _ls(key){
   return null;
 }
 
+// Normalize legacy Fastly jsDelivr profile-picture URLs to the standard CDN host.
+function normalizePfpUrl(url){
+  return typeof url === 'string'
+    ? url.replace(/https?:\/\/fastly\.jsdelivr\.net/gi, 'https://cdn.jsdelivr.net')
+    : url;
+}
+
 function getPfpForLevel(lvl){
   // Only use chosen pfp for the LOCAL user — for remote users (lvl comes from Firebase) skip this
-  return _milestoneForLevel(lvl);
+  return normalizePfpUrl(_milestoneForLevel(lvl));
 }
 function getMyPfp(lvl){
   const chosen = _ls('astro_chosen_pfp');
-  if(chosen) return chosen;
+  if(chosen) return normalizePfpUrl(chosen);
   return _milestoneForLevel(lvl);
 }
 function _milestoneForLevel(lvl){
@@ -572,7 +579,7 @@ function renderPanels(room, roomId){
       } else {
         panel.dataset.uid=user.id;
         const isMe=user.id===myId;
-        const userPfp = user.pfp || getPfpForLevel(user.level||0);
+        const userPfp = normalizePfpUrl(user.pfp || getPfpForLevel(user.level||0));
         const userLvl = user.level || 0;
         panel.innerHTML=`
           <div class="panel-head">
@@ -658,7 +665,7 @@ window.addEventListener('message', e => {
   window.__ASTRO_DATA__ = {
     level:      e.data.level,
     xp:         e.data.xp,
-    chosen_pfp: e.data.chosen_pfp
+    chosen_pfp: normalizePfpUrl(e.data.chosen_pfp)
   };
   renderLobbyLevel();
   preloadPfps();
